@@ -1,0 +1,52 @@
+name: OpenSSF Scorecard
+
+# The repository's own security posture, scored by the checks the ecosystem
+# already agrees on: branch protection, token permissions, pinned dependencies,
+# signed releases, dangerous workflow patterns, maintenance. It scores the repo,
+# not the code — that is CodeQL's job. The two are complements, not duplicates.
+#
+# Results go to code scanning and to the public Scorecard API, which is what the
+# badge reads. Publishing needs no stored credential: the action authenticates
+# with the workflow's OIDC identity.
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: "31 5 * * 1"
+  push:
+    branches: [main]
+
+permissions: read-all
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      security-events: write # upload the SARIF to code scanning
+      id-token: write        # publish_results, via OIDC
+      contents: read
+      actions: read          # the Token-Permissions and Dangerous-Workflow checks
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run Scorecard
+        uses: ossf/scorecard-action@v2.5.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Upload the SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: results.sarif
+
+      - name: Keep the raw result for a week
+        uses: actions/upload-artifact@v4
+        with:
+          name: scorecard-results
+          path: results.sarif
+          retention-days: 5

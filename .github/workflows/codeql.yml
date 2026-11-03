@@ -1,0 +1,43 @@
+name: CodeQL
+
+# Semantic SAST, to complement static-analysis.yml. Bandit finds a dangerous
+# pattern inside a single function; CodeQL follows dataflow across the package —
+# tainted tool input reaching subprocess, a path join, or a hook script. Prismor
+# executes commands authored by an agent, so the path from "model wrote this
+# string" to "the runtime ran it" is the thing worth following, and it is not
+# visible to a per-function linter.
+#
+# The weekly run exists so a query-pack update or a newly published CWE is
+# picked up in a week with no commits, which is exactly when nobody is looking.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "23 4 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialise CodeQL (Python)
+        uses: github/codeql-action/init@v4
+        with:
+          languages: python
+          # security-and-quality adds maintainability queries on top of the
+          # default security suite. Cheap here: the package is pure Python and
+          # the analysis finishes in a couple of minutes.
+          queries: security-and-quality
+
+      - name: Analyse
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:python"

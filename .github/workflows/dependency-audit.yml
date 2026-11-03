@@ -1,0 +1,55 @@
+name: Dependency audit
+
+# Audits the tree Prismor actually installs, not the single line in
+# requirements.txt. It builds a clean venv, installs the package, freezes what
+# landed, and asks pip-audit what is known against it. Transitive dependencies
+# are where supply-chain advisories land, and a check of the top-level
+# requirements cannot see them: today's resolved tree is four packages, three of
+# which are never named anywhere in this repository.
+#
+# pip-audit has no severity threshold — it fails on any advisory. That is
+# stricter than the "critical and high" in the issue, and deliberate: the tree
+# is clean as of 2026-11-03, so the gate starts green and any failure will mean
+# something actually changed. A false positive gets an --ignore-vuln with the
+# reason beside it, never a lowered threshold.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "47 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pip-audit, outside the tree under audit
+        run: python3 -m pip install --quiet pip-audit
+
+      - name: Resolve the dependency tree
+        # A separate venv, so pip-audit's own dependencies are not audited as if
+        # they were ours. Prismor is then dropped from the freeze: it is the
+        # subject of the audit, not one of its dependencies, and it is not on an
+        # index for pip-audit to resolve.
+        run: |
+          python3 -m venv /tmp/audit-env
+          /tmp/audit-env/bin/python -m pip install --quiet --upgrade pip
+          /tmp/audit-env/bin/python -m pip install --quiet .
+          /tmp/audit-env/bin/python -m pip freeze --exclude-editable \
+            | grep -vi '^prismor' > /tmp/audit-env/frozen.txt
+          echo "resolved tree:"
+          cat /tmp/audit-env/frozen.txt
+
+      - name: Audit
+        run: pip-audit --desc --strict --requirement /tmp/audit-env/frozen.txt

@@ -1,0 +1,31 @@
+version: 2
+
+# Weekly, grouped, and capped at three open PRs per ecosystem.
+#
+# Ungrouped dependabot on this repo would open a PR per dependency per week —
+# cryptography, PyYAML and their transitive pins, plus every action used by
+# seven workflows — and nobody reads twelve PRs a week. Grouping means one
+# reviewable PR per ecosystem, which is the only version of this that gets
+# merged. Majors stay ungrouped on purpose: they are the ones that need their
+# own diff and their own reasoning.
+
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      python-runtime:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      github-actions:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
