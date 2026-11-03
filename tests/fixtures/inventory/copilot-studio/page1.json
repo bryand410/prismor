@@ -1,0 +1,30 @@
+{
+  "_source": "https://learn.microsoft.com/en-us/power-platform/admin/inventory-api",
+  "totalRecords": 2,
+  "count": 1,
+  "resultTruncated": 1,
+  "skipToken": "page2",
+  "data": [
+    {
+      "id": "/microsoft.copilotstudio/agents/bot-inv-1",
+      "name": "bot-inv-1",
+      "type": "microsoft.copilotstudio/agents",
+      "location": "uksouth",
+      "properties": {
+        "displayName": "Title assistant",
+        "botId": "bot-inv-1",
+        "environmentId": "env-hmlr-prod",
+        "environmentName": "HMLR Prod",
+        "createdBy": "alice.maker@landregistry.gov.uk",
+        "ownerId": "owner-1",
+        "createdAt": "2026-09-15T00:00:00Z",
+        "lastModifiedAt": "2026-10-20T00:00:00Z",
+        "lastPublishedAt": "2026-10-20T00:00:00Z",
+        "isManaged": false,
+        "entraAppId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "entraAgentId": "11111111-2222-3333-4444-555555555555",
+        "schemaName": "cr_title"
+      }
+    }
+  ]
+}

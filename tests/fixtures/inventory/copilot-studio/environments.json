@@ -1,0 +1,14 @@
+{
+  "_source": "https://learn.microsoft.com/en-us/power-platform/admin/manage-application-users",
+  "value": [
+    {
+      "name": "env-hmlr-dev",
+      "properties": {
+        "displayName": "HMLR Dev",
+        "linkedEnvironmentMetadata": {
+          "instanceUrl": "https://hmlr.crm.dynamics.com"
+        }
+      }
+    }
+  ]
+}

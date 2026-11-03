@@ -1,0 +1,23 @@
+{
+  "_source": "https://learn.microsoft.com/en-us/power-platform/admin/inventory-api",
+  "totalRecords": 2,
+  "count": 1,
+  "skipToken": "",
+  "data": [
+    {
+      "id": "/microsoft.copilotstudio/agents/bot-inv-2",
+      "name": "bot-inv-2",
+      "type": "microsoft.copilotstudio/agents",
+      "location": "uksouth",
+      "properties": {
+        "displayName": "Search assistant",
+        "botId": "bot-inv-2",
+        "environmentId": "env-hmlr-prod",
+        "createdAt": "2026-10-01T00:00:00Z",
+        "lastPublishedAt": null,
+        "entraAppId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "schemaName": "cr_search"
+      }
+    }
+  ]
+}

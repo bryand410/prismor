@@ -1,0 +1,33 @@
+{
+  "_source": "https://learn.microsoft.com/en-us/power-apps/developer/data-platform/reference/entities/botcomponent",
+  "value": [
+    {
+      "botcomponentid": "c1",
+      "componenttype": 16,
+      "name": "Public site",
+      "schemaname": "cr_web",
+      "data": "kind: public-website\nnote: OBI-RAW-MARKER\nsecret: sk-ant-CANARYAAAAAAAAAAAAAA\n"
+    },
+    {
+      "botcomponentid": "c2",
+      "componenttype": 9,
+      "name": "Greet",
+      "schemaname": "cr_greet",
+      "data": "kind: topic\n"
+    },
+    {
+      "botcomponentid": "c3",
+      "componenttype": 17,
+      "name": "On event",
+      "schemaname": "cr_event",
+      "data": "kind: event\n"
+    },
+    {
+      "botcomponentid": "c4",
+      "componenttype": 15,
+      "name": "Maker connector",
+      "schemaname": "cr_conn",
+      "data": "connectionReference: maker-connection\nurl: https://mcp.example.com/mcp?code=CANARYVALUE\n"
+    }
+  ]
+}

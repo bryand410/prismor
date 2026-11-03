@@ -1,0 +1,7 @@
+{
+  "_source": "https://learn.microsoft.com/en-us/azure/azure-monitor/logs/logs-ingestion-api-overview",
+  "status": 429,
+  "headers": {
+    "Retry-After": "0"
+  }
+}

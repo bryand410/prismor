@@ -11,7 +11,9 @@ param(
     [string]$Mode = "enforce",
     [string]$Rules = "",
     [string]$ApiBase = "",
-    [string]$Label = ""
+    [string]$Label = "",
+    [switch]$Discover,
+    [string]$DiscoverSinks = ""
 )
 $ErrorActionPreference = "Stop"
 
@@ -73,6 +75,40 @@ try {
             $null | & $py -m prismor.runtime.immunity_cli system-sync --quiet
         }
     }
+
+    if ($Discover) {
+        # Fleet inventory settings. Sink secrets stay in the environment / Cloak
+        # (PRISMOR_SENTINEL_SECRET and friends). They are not written here.
+        $inv = Join-Path $env:ProgramData "Prismor\inventory.yaml"
+        $sinkBlock = "sinks: []"
+        if ($DiscoverSinks) {
+            $names = $DiscoverSinks.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+            $blocks = foreach ($name in $names) {
+@"
+  - name: $name
+    type: $name
+    endpoint: "`${PRISMOR_SENTINEL_ENDPOINT}"
+    dcr_immutable_id: "`${PRISMOR_SENTINEL_DCR}"
+    stream: Custom-PrismorAIInventory
+    auth: client-credentials
+    tenant_id: "`${PRISMOR_SENTINEL_TENANT}"
+    client_id: "`${PRISMOR_SENTINEL_CLIENT}"
+    client_secret: "`${PRISMOR_SENTINEL_SECRET}"
+"@
+            }
+            $sinkBlock = "sinks:`n" + ($blocks -join "`n")
+        }
+        @"
+schema: prismor.inventory.settings.v1
+surfaces: [endpoint]
+interval_hours: 24
+all_users: true
+hash_users: true
+$sinkBlock
+"@ | Set-Content -Path $inv -Encoding utf8
+        Write-Output "inventory enabled ($inv)"
+    }
+
     Set-Content -Path (Join-Path $root "VERSION") -Value $ver -Encoding ascii
 
     # Older runtimes: nothing points at them now. A file still held open by a

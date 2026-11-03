@@ -4322,8 +4322,13 @@ def build_parser() -> argparse.ArgumentParser:
                     "outside Prismor's coverage. Host-local and read-only.",
     )
     discover_parser.add_argument(
-        "section", nargs="?", choices=["all", "agents", "mcp", "keys"], default="all",
-        help="Limit the report to one inventory (default: all)")
+        "section", nargs="?",
+        choices=["all", "agents", "mcp", "keys", "endpoint", "jetbrains", "extensions",
+                 "wsl", "copilot-studio", "inventory"],
+        default="all",
+        help="Legacy inventories (all/agents/mcp/keys) or an inventory surface "
+             "(endpoint, jetbrains, extensions, wsl, copilot-studio, inventory)",
+    )
     discover_parser.add_argument("--workspace", help="Workspace path")
     discover_parser.add_argument("--json", action="store_true", help="Machine-readable report")
     discover_parser.add_argument(
@@ -4348,6 +4353,33 @@ def build_parser() -> argparse.ArgumentParser:
     discover_parser.add_argument(
         "--fix-mode", choices=["observe", "enforce"], default="observe",
         help="Mode to install newly hooked agents in (default: observe)")
+    discover_parser.add_argument(
+        "--format", choices=["table", "json", "ndjson"], default=None,
+        help="Inventory output format (default: table on a TTY, otherwise ndjson)")
+    discover_parser.add_argument("--out", help="Write inventory output to FILE")
+    discover_parser.add_argument("--sink", help="Comma-separated inventory sink names from settings")
+    discover_parser.add_argument(
+        "--fail-on", choices=["none", "low", "medium", "high", "critical"], default=None,
+        help="Exit 1 when any inventory record is at or above this risk level")
+    discover_parser.add_argument(
+        "--auth", choices=["device-code", "client-credentials", "managed-identity", "env", "fixture"],
+        default=None, help="How to obtain an Entra token. Secrets come from the environment, never argv")
+    discover_parser.add_argument("--tenant", default=None, help="Entra tenant id")
+    discover_parser.add_argument("--client-id", default=None, help="App registration client id")
+    discover_parser.add_argument("--cert", default=None, help="PEM certificate + key for client-credentials")
+    discover_parser.add_argument("--secret-env", default=None, help="Env var holding the client secret (not the secret)")
+    discover_parser.add_argument("--token-env", default=None, help="Env var holding a bearer token (not the token)")
+    discover_parser.add_argument("--since", default=None, help="Incremental lower bound where the API supports it")
+    discover_parser.add_argument("--dry-run", action="store_true", help="Print the calls and paths without executing them")
+    discover_parser.add_argument("--strict", action="store_true", help="Exit 4 when a collector returns a diagnostic")
+    discover_parser.add_argument("--all-users", action="store_true", help="Scan every local profile (SYSTEM/root)")
+    discover_parser.add_argument("--deep", action="store_true", help="Reserved for process and package collectors")
+    discover_parser.add_argument(
+        "--api", choices=["inventory", "dataverse", "auto"], default=None,
+        help="Copilot Studio API. auto uses the inventory API and falls back to Dataverse on 403")
+    discover_parser.add_argument(
+        "--env", action="append", dest="copilot_env", default=None,
+        help="Limit Copilot Studio collection to this environment id (repeatable)")
 
     aibom_parser = subparsers.add_parser(
         "aibom",
@@ -5988,6 +6020,10 @@ def _run_discover(args, workspace: Path, repo_root: Path) -> None:
     from prismor.runtime import discover_cli
 
     section = getattr(args, "section", "all") or "all"
+    if section not in {"all", "agents", "mcp", "keys"}:
+        from prismor.runtime import inventory_cli
+        raise SystemExit(inventory_cli.execute(args, workspace))
+
     as_json = getattr(args, "json", False)
     scan_files = not getattr(args, "no_file_scan", False)
 

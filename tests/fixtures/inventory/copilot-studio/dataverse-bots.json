@@ -1,0 +1,18 @@
+{
+  "_source": "https://learn.microsoft.com/en-us/power-apps/developer/data-platform/reference/entities/bot",
+  "value": [
+    {
+      "botid": "bot-0001",
+      "name": "Land Registry assistant",
+      "schemaname": "cr_landreg",
+      "statecode": 0,
+      "statuscode": 1,
+      "publishedon": null,
+      "modifiedon": "2026-10-01T00:00:00Z",
+      "authenticationmode": 1,
+      "authenticationtrigger": 0,
+      "accesscontrolpolicy": 0,
+      "language": 1033
+    }
+  ]
+}

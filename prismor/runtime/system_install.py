@@ -322,6 +322,11 @@ def sync() -> Dict[str, Any]:
             os.environ.pop("PRISMOR_HOME", None)
         else:
             os.environ["PRISMOR_HOME"] = saved
+    try:
+        from prismor.runtime.inventory.runner import maybe_fleet_scan
+        out["inventory"] = maybe_fleet_scan()
+    except Exception as exc:
+        out["errors"].append(f"inventory: {exc.__class__.__name__}")
     return out
 
 
