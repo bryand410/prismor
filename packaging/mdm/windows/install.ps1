@@ -86,14 +86,17 @@ try {
             $blocks = foreach ($name in $names) {
 @"
   - name: $name
-    type: $name
+    type: sentinel
     endpoint: "`${PRISMOR_SENTINEL_ENDPOINT}"
     dcr_immutable_id: "`${PRISMOR_SENTINEL_DCR}"
-    stream: Custom-PrismorAIInventory
-    auth: client-credentials
-    tenant_id: "`${PRISMOR_SENTINEL_TENANT}"
-    client_id: "`${PRISMOR_SENTINEL_CLIENT}"
-    client_secret: "`${PRISMOR_SENTINEL_SECRET}"
+    streams:
+      events: Custom-PrismorAgentEvents
+      inventory: Custom-PrismorAIInventory
+    auth:
+      mode: client_secret
+      tenant_id: "`${PRISMOR_SENTINEL_TENANT}"
+      client_id: "`${PRISMOR_SENTINEL_CLIENT}"
+      client_secret: "`${PRISMOR_SENTINEL_SECRET}"
 "@
             }
             $sinkBlock = "sinks:`n" + ($blocks -join "`n")

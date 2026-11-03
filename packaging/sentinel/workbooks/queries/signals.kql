@@ -1,0 +1,4 @@
+PrismorAIInventory_CL
+| where TimeGenerated > ago(7d)
+| mv-expand Signal=RiskSignalIds
+| summarize Hits=count() by tostring(Signal)

@@ -1,0 +1,17 @@
+id: 9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c03
+name: Agent events for a session
+severity: Informational
+queryFrequency: P1D
+queryPeriod: P1D
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Discovery
+version: 1.0.0
+query: |
+  PrismorAgentEvents_CL
+  | where TimeGenerated > ago(1d)
+  | where SessionId != ""
+  | summarize arg_max(TimeGenerated, *) by EventId
+  | sort by SessionSeq asc
+  | project EventTime, SessionId, SessionSeq, RuleId, Action, Severity, FindingTitle, Hostname, Subject

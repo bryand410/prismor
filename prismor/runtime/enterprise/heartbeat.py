@@ -320,3 +320,15 @@ def flush_at_exit() -> None:
     # ponytail: atexit misses SIGTERM/SIGKILL (a plain `docker stop`); add a
     # signal hook only if deployed agents report missing tails.
     atexit.register(maybe_flush, force=True, timeout=EXIT_FLUSH_TIMEOUT)
+    atexit.register(_sentinel_exit_flush)
+
+
+def _sentinel_exit_flush() -> None:
+    try:
+        from prismor.runtime.sentinel import configured_sinks, maybe_flush
+        for sink in configured_sinks():
+            delivery = str(sink.get("delivery") or "auto")
+            if delivery in {"inline", "auto"}:
+                maybe_flush(sink, trigger="exit", force=True)
+    except Exception:
+        return

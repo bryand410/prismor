@@ -1,0 +1,54 @@
+name: sentinel-content
+
+on:
+  pull_request:
+    paths:
+      - "packaging/sentinel/**"
+      - "prismor/runtime/sentinel/**"
+      - ".github/workflows/sentinel-content.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packaging/sentinel/**"
+      - "prismor/runtime/sentinel/**"
+      - ".github/workflows/sentinel-content.yml"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install --quiet pytest pyyaml
+      - name: Schema sync and KQL lint
+        run: python -m pytest tests/test_sentinel_schema_sync.py tests/test_sentinel_kql.py -q -p no:randomly
+
+  bicep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install --quiet pytest pyyaml
+      # TODO(verify): Azure CLI is preinstalled on GitHub-hosted ubuntu-latest.
+      # Install bicep explicitly so the job does not depend on that image detail.
+      - name: Install Bicep
+        run: az bicep install
+      - name: Build the Sentinel templates
+        run: python -m pytest tests/test_sentinel_bicep.py -q -p no:randomly
+
+  kql-semantic:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Semantic KQL check
+        run: dotnet run --project packaging/sentinel/tools/kqlcheck

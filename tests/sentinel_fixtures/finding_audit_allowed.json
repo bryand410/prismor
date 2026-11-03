@@ -1,0 +1,9 @@
+{
+  "severity": "INFO",
+  "category": "audit",
+  "ruleId": "audit-allowed",
+  "action": "allow",
+  "title": "allowed call",
+  "evidence": "ls",
+  "id": "sess-2:1"
+}

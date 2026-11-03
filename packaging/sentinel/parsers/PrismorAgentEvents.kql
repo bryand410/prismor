@@ -1,0 +1,4 @@
+// At-least-once delivery becomes one row per EventId.
+PrismorAgentEvents_CL
+| where TimeGenerated > ago(1d)
+| summarize arg_max(TimeGenerated, *) by EventId

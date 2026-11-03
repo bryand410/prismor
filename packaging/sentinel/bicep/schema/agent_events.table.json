@@ -1,0 +1,122 @@
+[
+  {
+    "name": "TimeGenerated",
+    "type": "dateTime"
+  },
+  {
+    "name": "EventTime",
+    "type": "dateTime"
+  },
+  {
+    "name": "EventId",
+    "type": "string"
+  },
+  {
+    "name": "SchemaVersion",
+    "type": "string"
+  },
+  {
+    "name": "EventType",
+    "type": "string"
+  },
+  {
+    "name": "Source",
+    "type": "string"
+  },
+  {
+    "name": "PrismorVersion",
+    "type": "string"
+  },
+  {
+    "name": "Hostname",
+    "type": "string"
+  },
+  {
+    "name": "DeviceId",
+    "type": "string"
+  },
+  {
+    "name": "Subject",
+    "type": "string"
+  },
+  {
+    "name": "SessionId",
+    "type": "string"
+  },
+  {
+    "name": "SessionSeq",
+    "type": "long"
+  },
+  {
+    "name": "FindingId",
+    "type": "string"
+  },
+  {
+    "name": "RuleId",
+    "type": "string"
+  },
+  {
+    "name": "Category",
+    "type": "string"
+  },
+  {
+    "name": "Severity",
+    "type": "string"
+  },
+  {
+    "name": "SeverityRank",
+    "type": "int"
+  },
+  {
+    "name": "Action",
+    "type": "string"
+  },
+  {
+    "name": "FindingTitle",
+    "type": "string"
+  },
+  {
+    "name": "Evidence",
+    "type": "string"
+  },
+  {
+    "name": "Agent",
+    "type": "string"
+  },
+  {
+    "name": "AgentName",
+    "type": "string"
+  },
+  {
+    "name": "Mode",
+    "type": "string"
+  },
+  {
+    "name": "Workspace",
+    "type": "string"
+  },
+  {
+    "name": "Repo",
+    "type": "string"
+  },
+  {
+    "name": "PolicyScope",
+    "type": "string"
+  },
+  {
+    "name": "EvalMs",
+    "type": "real"
+  },
+  {
+    "name": "Environment",
+    "type": "string"
+  },
+  {
+    "name": "Release",
+    "type": "string"
+  },
+  {
+    "name": "AdditionalFields",
+    "type": "dynamic"
+  }
+]

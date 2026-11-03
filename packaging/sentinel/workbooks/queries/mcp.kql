@@ -1,0 +1,4 @@
+PrismorAIInventory_CL
+| where TimeGenerated > ago(7d)
+| where Kind == "mcp_server" and Surface == "endpoint"
+| summarize Servers=dcount(RecordId) by Hostname, HostId

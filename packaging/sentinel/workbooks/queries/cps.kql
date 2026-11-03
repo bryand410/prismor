@@ -1,0 +1,6 @@
+PrismorAIInventory_CL
+| where TimeGenerated > ago(7d)
+| where Kind == "lowcode_agent" and InventorySource == "lowcode.copilot_studio"
+| where set_has_element(RiskSignalIds, "NO_AUTH") or set_has_element(RiskSignalIds, "SHARED_TENANT_WIDE") or set_has_element(RiskSignalIds, "MAKER_CREDENTIALS")
+| summarize arg_max(ObservedAt, *) by EntityKey
+| project ObservedAt, Name, EntraTenantId, PowerPlatformEnvironmentId, RiskScore, RiskSignalIds

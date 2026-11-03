@@ -674,6 +674,25 @@
                 "step_up"
               ],
               "description": "Posture for a CLI whose destination cannot be inferred from argv. Default observe. Escalated to the external tier automatically when the binary was installed this session or a doc from that vendor was just fetched."
+            },
+            "outputs": {
+              "type": "array",
+              "description": "Telemetry sinks. A sentinel entry uses the Logs Ingestion API (see docs/sentinel.md). The Python policy loader stores this list; it does not jsonschema-check each sink at runtime.",
+              "items": {
+                "type": "object",
+                "required": ["type"],
+                "properties": {
+                  "type": {"type": "string"},
+                  "name": {"type": "string"},
+                  "endpoint": {"type": "string"},
+                  "dcr_immutable_id": {"type": "string"},
+                  "cloud": {"type": "string", "enum": ["public", "usgov", "china"]},
+                  "streams": {"type": "object", "additionalProperties": {"type": "string"}},
+                  "auth": {"type": "object", "additionalProperties": true},
+                  "delivery": {"type": "string", "enum": ["auto", "system", "background", "inline"]}
+                },
+                "additionalProperties": true
+              }
             }
           }
         }

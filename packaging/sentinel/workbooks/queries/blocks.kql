@@ -1,0 +1,4 @@
+PrismorAgentEvents_CL
+| where TimeGenerated > ago(7d)
+| where Action == "block"
+| summarize Blocks=dcount(EventId) by bin(TimeGenerated, 1h)

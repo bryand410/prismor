@@ -1,0 +1,29 @@
+{
+  "schema": "prismor.inventory.v1",
+  "record_id": "inv_mcpcursor000000001",
+  "entity_key": "mcp:cursor:local",
+  "group_id": "grp_mcpcursor00001",
+  "kind": "mcp_server",
+  "surface": "endpoint",
+  "source": "endpoint.core",
+  "product": "cursor",
+  "vendor": "",
+  "name": "local-tools",
+  "version": "",
+  "observed_at": "2026-11-02T00:00:00Z",
+  "location": {
+    "host_id": "h_fixturehost0001",
+    "hostname": "LT-0420",
+    "path": "~/.cursor/mcp.json",
+    "scope": "user",
+    "os": "windows"
+  },
+  "governance": {"managed": false, "coverable": true, "approved": false},
+  "risk": {
+    "score": 75,
+    "level": "critical",
+    "signals": [{"id": "SECRET_IN_CONFIG", "weight": 30}]
+  },
+  "attributes": {"transport": "stdio"},
+  "run": {"run_id": "run-mcp", "scanner_version": "1.71.7", "collector_version": "1"}
+}

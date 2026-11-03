@@ -1,0 +1,4 @@
+PrismorAIInventory_CL
+| where TimeGenerated > ago(7d)
+| summarize arg_max(ObservedAt, *) by RecordId
+| summarize Items=dcount(RecordId) by bin(ObservedAt, 1d), Managed

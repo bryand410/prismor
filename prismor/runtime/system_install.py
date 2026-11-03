@@ -270,7 +270,7 @@ def _give_back(home: Path) -> None:
         return  # profile ACLs are inherited; the user keeps full control
     st = home.stat()
     for f in home.iterdir():
-        if f.name.startswith(("telemetry-", "device-revoked")) or f.suffix == ".lock":
+        if f.name.startswith(("telemetry-", "device-revoked", "sentinel-")) or f.suffix == ".lock":
             try:
                 os.chown(f, st.st_uid, st.st_gid)
             except OSError:
@@ -317,6 +317,7 @@ def sync() -> Dict[str, Any]:
                 out["errors"].append(f"{home}: {exc}")
             out["pending_after"] += telemetry_spool.pending_count()
             _give_back(home)
+            _drain_sentinel_home()
     finally:
         if saved is None:
             os.environ.pop("PRISMOR_HOME", None)
@@ -328,6 +329,24 @@ def sync() -> Dict[str, Any]:
     except Exception as exc:
         out["errors"].append(f"inventory: {exc.__class__.__name__}")
     return out
+
+
+def _drain_sentinel_home() -> None:
+    """Ship the Sentinel spool for the user ``PRISMOR_HOME`` currently points at."""
+    os.environ["PRISMOR_SYSTEM_SYNC"] = "1"
+    try:
+        from prismor.runtime.policy_engine import PolicyEngine
+        from prismor.runtime.sentinel import configured_sinks, flush
+        try:
+            outputs = list(PolicyEngine().outputs or [])
+        except Exception:
+            outputs = []
+        for sink in configured_sinks(outputs):
+            flush(sink, budget_s=20, force=True)
+    except Exception:
+        return
+    finally:
+        os.environ.pop("PRISMOR_SYSTEM_SYNC", None)
 
 
 _TASK = "Prismor System Sync"

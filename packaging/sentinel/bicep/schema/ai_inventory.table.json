@@ -1,0 +1,166 @@
+[
+  {
+    "name": "TimeGenerated",
+    "type": "dateTime"
+  },
+  {
+    "name": "ObservedAt",
+    "type": "dateTime"
+  },
+  {
+    "name": "RecordId",
+    "type": "string"
+  },
+  {
+    "name": "EntityKey",
+    "type": "string"
+  },
+  {
+    "name": "GroupId",
+    "type": "string"
+  },
+  {
+    "name": "SchemaVersion",
+    "type": "string"
+  },
+  {
+    "name": "Kind",
+    "type": "string"
+  },
+  {
+    "name": "Surface",
+    "type": "string"
+  },
+  {
+    "name": "InventorySource",
+    "type": "string"
+  },
+  {
+    "name": "Product",
+    "type": "string"
+  },
+  {
+    "name": "Vendor",
+    "type": "string"
+  },
+  {
+    "name": "Name",
+    "type": "string"
+  },
+  {
+    "name": "Version",
+    "type": "string"
+  },
+  {
+    "name": "HostId",
+    "type": "string"
+  },
+  {
+    "name": "Hostname",
+    "type": "string"
+  },
+  {
+    "name": "OsName",
+    "type": "string"
+  },
+  {
+    "name": "UserHash",
+    "type": "string"
+  },
+  {
+    "name": "Path",
+    "type": "string"
+  },
+  {
+    "name": "Scope",
+    "type": "string"
+  },
+  {
+    "name": "RepoName",
+    "type": "string"
+  },
+  {
+    "name": "EntraTenantId",
+    "type": "string"
+  },
+  {
+    "name": "PowerPlatformEnvironmentId",
+    "type": "string"
+  },
+  {
+    "name": "CloudAccount",
+    "type": "string"
+  },
+  {
+    "name": "Region",
+    "type": "string"
+  },
+  {
+    "name": "Namespace",
+    "type": "string"
+  },
+  {
+    "name": "Location",
+    "type": "dynamic"
+  },
+  {
+    "name": "Managed",
+    "type": "boolean"
+  },
+  {
+    "name": "GovernedBy",
+    "type": "string"
+  },
+  {
+    "name": "Coverable",
+    "type": "boolean"
+  },
+  {
+    "name": "GovernanceMode",
+    "type": "string"
+  },
+  {
+    "name": "Approved",
+    "type": "boolean"
+  },
+  {
+    "name": "RiskScore",
+    "type": "int"
+  },
+  {
+    "name": "RiskLevel",
+    "type": "string"
+  },
+  {
+    "name": "RiskSignalIds",
+    "type": "dynamic"
+  },
+  {
+    "name": "RiskSignals",
+    "type": "dynamic"
+  },
+  {
+    "name": "Attributes",
+    "type": "dynamic"
+  },
+  {
+    "name": "Evidence",
+    "type": "dynamic"
+  },
+  {
+    "name": "Related",
+    "type": "dynamic"
+  },
+  {
+    "name": "RunId",
+    "type": "string"
+  },
+  {
+    "name": "ScannerVersion",
+    "type": "string"
+  },
+  {
+    "name": "CollectorVersion",
+    "type": "string"
+  }
+]

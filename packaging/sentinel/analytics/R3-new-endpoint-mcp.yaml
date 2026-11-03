@@ -1,0 +1,24 @@
+id: 8f0c1c2a-1b2e-4c3d-9a10-a1b2c3d4e5f3
+name: Prismor new MCP server on an endpoint
+severity: Medium
+queryFrequency: PT1H
+queryPeriod: P14D
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Execution
+  - Persistence
+version: 1.0.0
+query: |
+  let window = 1h;
+  let prior = PrismorAIInventory_CL
+    | where TimeGenerated between (ago(14d) .. ago(window))
+    | where Kind == "mcp_server" and Surface == "endpoint"
+    | distinct HostId, EntityKey;
+  PrismorAIInventory_CL
+  | where TimeGenerated > ago(window)
+  | where Kind == "mcp_server" and Surface == "endpoint"
+  | join kind=leftanti prior on HostId, EntityKey
+  | summarize arg_max(ObservedAt, *) by HostId, EntityKey
+  | extend Unmanaged = not(Managed)
+  | project ObservedAt, Hostname, HostId, UserHash, Name, Product, Path, Scope, Unmanaged, RiskScore, RiskSignalIds

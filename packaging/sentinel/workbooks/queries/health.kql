@@ -1,0 +1,5 @@
+PrismorAgentEvents_CL
+| where TimeGenerated > ago(7d)
+| where EventType == "health"
+| extend Late = iff(TimeGenerated != EventTime, 1, 0)
+| summarize Hosts=dcount(Hostname), LateRows=sum(Late) by bin(TimeGenerated, 1h)

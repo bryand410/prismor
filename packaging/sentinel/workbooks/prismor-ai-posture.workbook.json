@@ -1,0 +1,12 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {"type": 1, "content": {"json": "## Prismor AI posture"}, "name": "title"},
+    {"type": 9, "content": {"version": "KqlParameterItem/1.0", "parameters": [
+      {"id": "tr", "version": "KqlParameterItem/1.0", "name": "TimeRange", "type": 4, "value": {"durationMs": 604800000}}
+    ]}, "name": "params"},
+    {"type": 3, "content": {"version": "KqlItem/1.0", "query": "PrismorAIInventory_CL | where TimeGenerated > ago(7d) | summarize Items=dcount(RecordId) by Kind, Surface", "queryType": 0, "resourceType": "microsoft.operationalinsights/workspaces", "visualization": "barchart"}, "name": "census"}
+  ],
+  "fallbackResourceIds": [],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

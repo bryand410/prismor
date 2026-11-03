@@ -713,7 +713,8 @@ def dispatch(
 
     # First-party control-plane sinks are batched separately.
     prismor_sinks = [s for s in sinks if str((s or {}).get("type", "")).lower() == "prismor"]
-    generic_sinks = [s for s in sinks if str((s or {}).get("type", "")).lower() != "prismor"]
+    sentinel_sinks = [s for s in sinks if str((s or {}).get("type", "")).lower() == "sentinel"]
+    generic_sinks = [s for s in sinks if str((s or {}).get("type", "")).lower() not in {"prismor", "sentinel"}]
 
     for sink_cfg in prismor_sinks:
         sink = _expand_env(sink_cfg)
@@ -722,8 +723,10 @@ def dispatch(
         except Exception as exc:
             sys.stderr.write(f"[prismor] sink 'prismor' failed: {exc}\n")
 
+    events: List[Dict[str, Any]] = []
     for finding in findings:
         event = _build_event(finding, extra=extra)
+        events.append(event)
         for sink_cfg in generic_sinks:
             sink = _expand_env(sink_cfg)
             kind = str(sink.get("type", "")).lower()
@@ -734,13 +737,17 @@ def dispatch(
                 disp(sink, event)
             except Exception as exc:
                 sys.stderr.write(f"[prismor] sink {kind!r} failed: {exc}\n")
+    if sentinel_sinks and events:
+        try:
+            from prismor.runtime.sentinel import enqueue_events
+            for sink_cfg in sentinel_sinks:
+                enqueue_events(_expand_env(sink_cfg), events)
+        except Exception as exc:
+            from prismor.runtime.sentinel.auth import redact
+            sys.stderr.write(f"[prismor] sentinel enqueue failed: {redact(str(exc))}\n")
 
 
 # ── inventory sinks ──────────────────────────────────────────────────────────
-
-#: Azure Monitor Logs Ingestion API request cap.
-SENTINEL_MAX_BYTES = 1_000_000
-
 
 def _scrub_obj(value: Any) -> Any:
     """Scrub every string in an inventory payload. Fails closed per string."""
@@ -751,141 +758,6 @@ def _scrub_obj(value: Any) -> Any:
     if isinstance(value, list):
         return [_scrub_obj(v) for v in value]
     return value
-
-
-def _chunks(rows: List[Dict[str, Any]], limit: int) -> List[List[Dict[str, Any]]]:
-    """Split ``rows`` so each JSON array is at most ``limit`` bytes."""
-    batches: List[List[Dict[str, Any]]] = []
-    current: List[Dict[str, Any]] = []
-    size = 2  # []
-    for row in rows:
-        encoded = json.dumps(row, separators=(",", ":")).encode("utf-8")
-        extra = len(encoded) + (1 if current else 0)
-        if current and size + extra > limit:
-            batches.append(current)
-            current = [row]
-            size = 2 + len(encoded)
-        else:
-            current.append(row)
-            size += extra
-    if current:
-        batches.append(current)
-    return batches
-
-
-def _sentinel_row(record: Dict[str, Any]) -> Dict[str, Any]:
-    location = record.get("location") or {}
-    risk = record.get("risk") or {}
-    run = record.get("run") or {}
-    return {
-        "TimeGenerated": record.get("observed_at"),
-        "RecordId": record.get("record_id"),
-        "EntityKey": record.get("entity_key"),
-        "GroupId": record.get("group_id"),
-        "Kind": record.get("kind"),
-        "Surface": record.get("surface"),
-        "Source": record.get("source"),
-        "Product": record.get("product"),
-        "Vendor": record.get("vendor"),
-        "Name": record.get("name"),
-        "Version": record.get("version"),
-        "HostId": location.get("host_id"),
-        "Hostname": location.get("hostname"),
-        "UserHash": location.get("user"),
-        "TenantId": location.get("tenant_id"),
-        "EnvironmentId": location.get("environment_id"),
-        "Managed": bool((record.get("governance") or {}).get("managed")),
-        "GovernedBy": (record.get("governance") or {}).get("governed_by"),
-        "RiskScore": int(risk.get("score") or 0),
-        "RiskLevel": risk.get("level"),
-        "RiskSignals": risk.get("signals") or [],
-        "Location": location,
-        "Attributes": record.get("attributes") or {},
-        "RunId": run.get("run_id"),
-        "ScannerVersion": run.get("scanner_version"),
-    }
-
-
-def _sentinel_post(url: str, data: bytes, headers: Dict[str, str], timeout: float):
-    """One Logs Ingestion POST. Tests replace this."""
-    import urllib.request
-    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-    req.add_header("User-Agent", _http_user_agent())
-    with urllib.request.urlopen(req, timeout=timeout) as resp:  # operator-configured URL  # nosec B310
-        resp.read(16)
-        return resp.status
-
-
-def _dispatch_sentinel(cfg: Dict[str, Any], records: List[Dict[str, Any]], *,
-                       max_bytes: int = SENTINEL_MAX_BYTES) -> None:
-    """POST inventory rows to a Data Collection Rule stream.
-
-    Chunks on serialised size (≤1 MB), gzip-encodes the body, and retries
-    429/5xx honoring ``Retry-After``. The token is not logged.
-    """
-    import gzip
-    endpoint = str(cfg.get("endpoint") or "").rstrip("/")
-    dcr = str(cfg.get("dcr_immutable_id") or "")
-    stream = str(cfg.get("stream") or "Custom-PrismorAIInventory")
-    if not endpoint or not dcr:
-        return
-    token = str(cfg.get("_token") or "")
-    if not token:
-        from prismor.runtime.inventory.auth.entra import AuthError, access_token
-        from prismor.runtime.inventory.context import ScanContext
-        ctx = ScanContext(
-            os_name="linux", workspace=Path("."),
-            auth={
-                "mode": str(cfg.get("auth") or "client-credentials"),
-                "tenant": str(cfg.get("tenant_id") or ""),
-                "client_id": str(cfg.get("client_id") or ""),
-                "secret_env": "PRISMOR_SENTINEL_SECRET",
-                "token_env": str(cfg.get("token_env") or ""),
-                "cert": str(cfg.get("cert") or ""),
-            },
-        )
-        try:
-            token = access_token(ctx, "https://monitor.azure.com/.default")
-        except AuthError:
-            sys.stderr.write("[prismor] sentinel auth failed\n")
-            return
-    rows = [_sentinel_row(record) for record in records]
-    url = (
-        f"{endpoint}/dataCollectionRules/{dcr}/streams/{stream}"
-        "?api-version=2023-01-01"
-    )
-    timeout = float(cfg.get("timeout_seconds", 30))
-    use_gzip = bool(cfg.get("gzip", True))
-    poster = cfg.get("_post") or _sentinel_post
-    for batch in _chunks(rows, max_bytes):
-        raw = json.dumps(batch, separators=(",", ":")).encode("utf-8")
-        data = gzip.compress(raw) if use_gzip else raw
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {token}",
-        }
-        if use_gzip:
-            headers["Content-Encoding"] = "gzip"
-        delay = 1.0
-        for attempt in range(4):
-            try:
-                poster(url, data, headers, timeout)
-                break
-            except Exception as exc:
-                status = getattr(exc, "code", None) or getattr(exc, "status", None)
-                retry_after = delay
-                headers_obj = getattr(exc, "headers", None)
-                if headers_obj is not None:
-                    try:
-                        retry_after = float(headers_obj.get("Retry-After") or delay)
-                    except (TypeError, ValueError):
-                        retry_after = delay
-                if status in (429, 500, 502, 503, 504) and attempt < 3:
-                    time.sleep(retry_after)
-                    delay = max(delay, retry_after) * 2
-                    continue
-                sys.stderr.write("[prismor] sentinel ingest failed\n")
-                break
 
 
 def _dispatch_splunk_inventory(cfg: Dict[str, Any], record: Dict[str, Any]) -> None:
@@ -919,7 +791,9 @@ def dispatch_inventory(records: List[Dict[str, Any]], sinks: List[Dict[str, Any]
         kind = str(sink.get("type", "")).lower()
         try:
             if kind == "sentinel":
-                _dispatch_sentinel(sink, rows)
+                from prismor.runtime.sentinel import enqueue_inventory, maybe_flush
+                enqueue_inventory(sink, rows)
+                maybe_flush(sink, trigger="discover", force=True)
             elif kind == "file":
                 for row in rows:
                     _dispatch_file(sink, row)

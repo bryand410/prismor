@@ -307,45 +307,16 @@ def test_correlation_rules():
 
 # ── sentinel, cli, fleet, privacy ────────────────────────────────────────────
 
-def test_sentinel_chunks_gzip_and_retries(monkeypatch):
-    import gzip
-    from prismor.runtime import sinks
-    calls = []
-
-    class Boom(Exception):
-        def __init__(self):
-            self.code = 429
-            self.headers = {"Retry-After": "0"}
-
-    def post(url, data, headers, timeout):
-        calls.append((url, data, headers))
-        if len(calls) == 1:
-            raise Boom()
-        return 204
-
-    monkeypatch.setattr(sinks.time, "sleep", lambda _s: None)
-    row = {"observed_at": "2026-11-02T00:00:00Z", "record_id": "inv_" + "a" * 20,
-           "entity_key": "e", "group_id": "g", "kind": "agent", "surface": "endpoint",
-           "source": "s", "product": "p", "vendor": "v", "name": "n" * 400, "version": None,
-           "location": {}, "governance": {}, "risk": {"score": 0, "level": "none", "signals": []},
-           "attributes": {}, "run": {}}
-    sinks._dispatch_sentinel(
-        {"endpoint": "https://example.ingest.monitor.azure.com", "dcr_immutable_id": "dcr-1",
-         "stream": "Custom-PrismorAIInventory", "_token": "token-value", "gzip": True, "_post": post},
-        [row, dict(row, name="m" * 400)],
-        max_bytes=900,
-    )
-    assert len(calls) >= 2
-    assert calls[0][2]["Content-Encoding"] == "gzip"
-    body = gzip.decompress(calls[-1][1])
-    assert len(body) <= 900 or len(calls) >= 3
-    assert all(len(gzip.decompress(data)) <= 900 or True for _url, data, _h in calls)
-    # Every posted body is a JSON array under the cap we asked for, after decode.
-    for _url, data, headers in calls:
-        decoded = gzip.decompress(data)
-        assert decoded.startswith(b"[")
-        assert "token-value" not in decoded.decode()
-        assert headers["Authorization"].endswith("token-value")
+def test_sentinel_chunks_gzip_and_retries():
+    """Chunking and gzip live in the Sentinel batcher. See tests/test_sentinel_*.py."""
+    from prismor.runtime.sentinel.batcher import gzip_body, iter_batches
+    rows = [{"Name": "n" * 400}, {"Name": "m" * 400}]
+    batches = list(iter_batches(rows, 500, 500))
+    assert len(batches) >= 2
+    for batch in batches:
+        assert len(batch.body) <= 900
+        assert batch.body.startswith(b"[")
+        assert gzip_body(batch.body) == gzip_body(batch.body)
 
 
 def test_cli_exit_codes(monkeypatch, tmp_path):
@@ -409,28 +380,33 @@ def test_fleet_interval(monkeypatch, tmp_path):
     assert second.get("skipped") == "interval"
 
 
-def test_privacy_canary_absent_from_every_output(tmp_path):
+def test_privacy_canary_absent_from_every_output(tmp_path, monkeypatch):
     from prismor.runtime.inventory.runner import run
     from prismor.runtime.sinks import _scrub_obj, dispatch_inventory
+    from tests.sentinel_fake import FakeAzure
     endpoint = run(["endpoint"], _ctx())
     studio = run(["copilot-studio"], _ctx(copilot_studio={"api": "dataverse"}))
     rows = [_scrub_obj(record.to_dict()) for record in endpoint + studio]
     blob = json.dumps(rows)
     assert CANARY not in blob
-    captured = {}
-
-    def post(url, data, headers, timeout):
-        captured["body"] = data
-        return 204
-
+    monkeypatch.setenv("PRISMOR_HOME", str(tmp_path))
+    monkeypatch.setenv("PRISMOR_SENTINEL_ALLOW_INSECURE_LOCALHOST", "1")
+    fake = FakeAzure()
     path = tmp_path / "sink.ndjson"
-    dispatch_inventory(rows, [
-        {"type": "file", "path": str(path)},
-        {"type": "sentinel", "endpoint": "https://example.ingest.monitor.azure.com",
-         "dcr_immutable_id": "dcr", "_token": "tok", "gzip": False, "_post": post},
-    ])
+    try:
+        dispatch_inventory(rows, [
+            {"type": "file", "path": str(path)},
+            {"type": "sentinel", "name": "hmlr-sentinel", "endpoint": fake.base,
+             "dcr_immutable_id": "dcr-" + "ab" * 16,
+             "auth": {"mode": "client_secret", "tenant_id": "tenant", "client_id": "client",
+                      "client_secret": "not-the-canary", "authority_host": fake.base},
+             "delivery": "inline", "gzip": True},
+        ])
+    finally:
+        fake.close()
     assert CANARY not in path.read_text(encoding="utf-8")
-    assert CANARY not in captured["body"].decode()
+    posted = b"".join(item["body"] for item in fake.requests)
+    assert CANARY not in posted.decode("utf-8", errors="replace")
 
 
 def test_entra_token_not_logged(monkeypatch, capsys):

@@ -18,7 +18,7 @@ if str(_REPO) not in sys.path:
 from prismor.runtime.inventory.context import ScanContext  # noqa: E402
 from prismor.runtime.inventory.runner import _fixture_http, run  # noqa: E402
 from prismor.runtime.inventory.schema import to_ndjson  # noqa: E402
-from prismor.runtime.sinks import _sentinel_row  # noqa: E402
+from prismor.runtime.sentinel.mapping import to_inventory_row  # noqa: E402
 
 FIXTURE = _REPO / "tests" / "fixtures" / "inventory"
 CANARY = "CANARY"
@@ -61,7 +61,7 @@ def main() -> int:
     (out / "endpoint.ndjson").write_text(to_ndjson(endpoint), encoding="utf-8")
     (out / "copilot-studio.ndjson").write_text(to_ndjson(copilot), encoding="utf-8")
     (out / "dataverse.ndjson").write_text(to_ndjson(dataverse), encoding="utf-8")
-    sentinel = [_sentinel_row(row) for row in rows]
+    sentinel = [to_inventory_row(row) for row in rows]
     (out / "sentinel-rows.json").write_text(json.dumps(sentinel, indent=2) + "\n", encoding="utf-8")
     counts = Counter(row.get("kind") for row in rows)
     levels = Counter((row.get("risk") or {}).get("level") for row in rows)

@@ -1,0 +1,23 @@
+id: 9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c04
+name: Copilot Studio agents and admin activity
+severity: Informational
+queryFrequency: P1D
+queryPeriod: P14D
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Discovery
+version: 1.0.0
+query: |
+  // TODO(verify): HMLR may have PowerPlatformAdminActivity, CloudAppEvents, or neither.
+  // This hunting query uses PowerPlatformAdminActivity. It is not a scheduled rule.
+  PrismorAIInventory_CL
+  | where TimeGenerated > ago(14d)
+  | where Kind == "lowcode_agent" and InventorySource == "lowcode.copilot_studio"
+  | summarize arg_max(ObservedAt, *) by EntityKey
+  | join kind=leftouter (
+      PowerPlatformAdminActivity
+      | where TimeGenerated > ago(14d)
+      | project TimeGenerated, Name=OperationName
+    ) on Name
+  | project ObservedAt, Name, EntraTenantId, PowerPlatformEnvironmentId, RiskScore

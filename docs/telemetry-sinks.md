@@ -140,6 +140,26 @@ info).
 Appends one line per finding. Useful for a local forwarder that tails a file,
 and for testing a policy without wiring a network destination.
 
+### `sentinel` — Microsoft Sentinel (Logs Ingestion API)
+
+```yaml
+- type: sentinel
+  name: hmlr-sentinel
+  endpoint: https://<dcr-or-dce>.uksouth-1.ingest.monitor.azure.com
+  dcr_immutable_id: dcr-00000000000000000000000000000000
+  auth:
+    mode: client_secret
+    tenant_id: ${PRISMOR_SENTINEL_TENANT}
+    client_id: ${PRISMOR_SENTINEL_CLIENT}
+    client_secret: ${PRISMOR_SENTINEL_SECRET}
+```
+
+Events are spooled under `~/.prismor` and posted to
+`PrismorAgentEvents_CL` (`Custom-PrismorAgentEvents`). Inventory records go to
+`PrismorAIInventory_CL`. The legacy HTTP Data Collector API (`workspace_id` +
+`shared_key`) is rejected. Setup, the four auth modes, and `prismor sentinel
+test` are in [Sentinel](sentinel.md).
+
 ### `prismor` — the control plane
 
 ```yaml

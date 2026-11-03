@@ -50,6 +50,17 @@ for t in \
   tests/test_hooks_extended.py \
   tests/test_skills_audit.py \
   tests/test_hook_health.py \
+  tests/test_sentinel_config.py \
+  tests/test_sentinel_auth.py \
+  tests/test_sentinel_mapping.py \
+  tests/test_sentinel_batcher.py \
+  tests/test_sentinel_client.py \
+  tests/test_sentinel_spool.py \
+  tests/test_sentinel_redaction.py \
+  tests/test_sentinel_contract.py \
+  tests/test_sentinel_schema_sync.py \
+  tests/test_sentinel_kql.py \
+  tests/test_sentinel_bicep.py \
   ; do
   [[ -f "$t" ]] && pytest_targets+=("$t")
 done

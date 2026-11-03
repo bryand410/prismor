@@ -1,0 +1,4 @@
+// Latest inventory state per record.
+PrismorAIInventory_CL
+| where TimeGenerated > ago(7d)
+| summarize arg_max(ObservedAt, *) by RecordId

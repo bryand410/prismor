@@ -1,0 +1,27 @@
+name: sentinel-live
+
+on:
+  workflow_dispatch:
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    environment: sentinel-live
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install --quiet pytest pyyaml cryptography
+      - name: Post three rows
+        env:
+          PRISMOR_SENTINEL_LIVE: "1"
+          PRISMOR_SENTINEL_LIVE_ENDPOINT: ${{ secrets.PRISMOR_SENTINEL_LIVE_ENDPOINT }}
+          PRISMOR_SENTINEL_LIVE_DCR: ${{ secrets.PRISMOR_SENTINEL_LIVE_DCR }}
+          PRISMOR_SENTINEL_LIVE_TENANT: ${{ secrets.PRISMOR_SENTINEL_LIVE_TENANT }}
+          PRISMOR_SENTINEL_LIVE_CLIENT_ID: ${{ secrets.PRISMOR_SENTINEL_LIVE_CLIENT_ID }}
+          PRISMOR_SENTINEL_LIVE_SECRET: ${{ secrets.PRISMOR_SENTINEL_LIVE_SECRET }}
+          PRISMOR_SENTINEL_LIVE_CERT_FILE: ${{ secrets.PRISMOR_SENTINEL_LIVE_CERT_FILE }}
+          PRISMOR_SENTINEL_LIVE_WORKSPACE_ID: ${{ secrets.PRISMOR_SENTINEL_LIVE_WORKSPACE_ID }}
+        run: python -m pytest tests/test_sentinel_live.py -q -p no:randomly -rs

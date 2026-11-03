@@ -876,6 +876,10 @@ def main(argv: Optional[List[str]] = None) -> None:
         _run_discover(args, workspace, repo_root)
         return
 
+    if args.command == "sentinel":
+        _run_sentinel(args)
+        return
+
     if args.command == "aibom":
         from prismor.runtime import aibom as _aibom
         raise SystemExit(_aibom.run(workspace, fmt=args.format, output=args.output))
@@ -4381,6 +4385,28 @@ def build_parser() -> argparse.ArgumentParser:
         "--env", action="append", dest="copilot_env", default=None,
         help="Limit Copilot Studio collection to this environment id (repeatable)")
 
+    sentinel_parser = subparsers.add_parser(
+        "sentinel",
+        help="Microsoft Sentinel (Logs Ingestion API) spool, flush, and health",
+    )
+    sentinel_sub = sentinel_parser.add_subparsers(dest="sentinel_command")
+    sentinel_test = sentinel_sub.add_parser("test", help="POST one synthetic row and print the status code")
+    sentinel_test.add_argument("--sink", default=None)
+    sentinel_test.add_argument("--stream", choices=["events", "inventory", "both"], default="both")
+    sentinel_flush = sentinel_sub.add_parser("flush", help="Drain Sentinel spools now")
+    sentinel_flush.add_argument("--sink", default=None)
+    sentinel_flush.add_argument("--budget", type=float, default=30)
+    sentinel_flush.add_argument("--all-users", action="store_true")
+    sentinel_status = sentinel_sub.add_parser("status", help="Show spool and last error")
+    sentinel_status.add_argument("--sink", default=None)
+    sentinel_status.add_argument("--json", action="store_true")
+    sentinel_schema = sentinel_sub.add_parser("schema", help="Print Sentinel column definitions")
+    sentinel_schema.add_argument("--table", choices=["events", "inventory"], default="events")
+    sentinel_schema.add_argument("--format", choices=["json", "bicep", "kql"], default="json")
+    sentinel_schema.add_argument("--write", action="store_true")
+    sentinel_validate = sentinel_sub.add_parser("validate", help="Validate sentinel outputs offline")
+    sentinel_validate.add_argument("--policy", default=None)
+
     aibom_parser = subparsers.add_parser(
         "aibom",
         help="Export an AI bill of materials (CycloneDX 1.6): agents, models, MCP servers, plugins, skills, hooks",
@@ -6014,6 +6040,40 @@ def _run_trail(args) -> None:
     raise SystemExit(2)
 
 
+def _run_sentinel(args) -> None:
+    from prismor.runtime.sentinel.commands import run_status, run_test, schema_text, validate_policy, write_schema_files
+    from prismor.runtime.sentinel.commands import _select, _sinks_from_policy
+    sub = getattr(args, "sentinel_command", None)
+    if sub == "validate":
+        raise SystemExit(validate_policy(getattr(args, "policy", None)))
+    if sub == "schema":
+        if getattr(args, "write", False):
+            write_schema_files()
+            print("wrote packaging/sentinel/bicep/schema")
+            return
+        sys.stdout.write(schema_text(getattr(args, "table", "events"), getattr(args, "format", "json")))
+        return
+    try:
+        sinks = _sinks_from_policy(None)
+        sink = _select(sinks, getattr(args, "sink", None))
+    except Exception as exc:
+        sys.stderr.write(f"sentinel: {exc}\n")
+        raise SystemExit(2)
+    if sub == "test":
+        raise SystemExit(run_test(sink, getattr(args, "stream", "both")))
+    if sub == "status":
+        raise SystemExit(run_status(sink, bool(getattr(args, "json", False))))
+    if sub == "flush":
+        from prismor.runtime.sentinel import flush
+        result = flush(sink, budget_s=float(getattr(args, "budget", 30) or 30))
+        pending = 0
+        for item in (result.get("streams") or {}).values():
+            pending += int(item.get("pending") or 0)
+        raise SystemExit(1 if pending else 0)
+    sys.stderr.write("Usage: prismor sentinel {test|flush|status|schema|validate}\n")
+    raise SystemExit(2)
+
+
 def _run_discover(args, workspace: Path, repo_root: Path) -> None:
     """`prismor discover` — sweep this host for AI agents, MCP servers and
     provider keys running outside Prismor's coverage (shadow AI)."""
@@ -6211,6 +6271,14 @@ def _run_doctor(workspace: Path, as_json: bool = False, self_test: bool = False)
             add("fail", "policy", f"project policy is invalid, {_kept}: {_perr}")
         else:
             add("ok", "policy", f"{n_rules} rules loaded (default mode: {mode})")
+        try:
+            from prismor.runtime.sentinel import configured_sinks, status as sentinel_status
+            for _sink in configured_sinks(list(getattr(engine, "outputs", []) or [])):
+                _doc = sentinel_status(_sink)
+                add("ok" if _doc.get("state") == "ok" else "warn", "sentinel",
+                    f"{_doc.get('sink')} {_doc.get('state')}")
+        except Exception:
+            pass
     except Exception as exc:
         engine = None
         add("fail", "policy", f"policy failed to load: {exc}")

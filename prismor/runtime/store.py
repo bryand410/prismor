@@ -42,6 +42,46 @@ def _locked(handle) -> Iterator[None]:
             pass
 
 
+def try_file_lock(path: Path) -> Iterator[bool]:
+    """Non-blocking exclusive lock on ``path`` itself.
+
+    Yields True when this process owns the lock, False when another holder
+    has it. The Sentinel flusher uses this so a second flush returns at once.
+    ``fcntl`` stays in this module; callers must not import it themselves.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle = open(path, "a+", encoding="utf-8")
+    owned = False
+    try:
+        if fcntl is not None:
+            try:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                owned = True
+            except OSError:
+                yield False
+                return
+        else:
+            import msvcrt
+            try:
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                owned = True
+            except OSError:
+                yield False
+                return
+        yield True
+    finally:
+        if owned:
+            try:
+                if fcntl is not None:
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+                else:
+                    import msvcrt
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            except OSError:
+                pass
+        handle.close()
+
+
 @contextmanager
 def file_lock(path: Path) -> Iterator[None]:
     """Exclusive advisory lock for ``path``, keyed on a sibling ``.lock`` file.

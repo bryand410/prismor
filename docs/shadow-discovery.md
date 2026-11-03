@@ -55,9 +55,10 @@ python3 -m prismor.runtime.cli discover copilot-studio --api inventory --format 
 ```
 
 `/tmp/hmlr-demo/summary.txt` from the script lists risk counts and points at
-`packaging/sentinel/queries.kql`. Those queries are what you paste into
-Sentinel once a workspace exists. The fixture run writes a local
-`sentinel-rows.json` instead of calling the Logs Ingestion API.
+`packaging/sentinel/`. The analytics rules and hunting queries there are what
+you deploy once a workspace exists. The fixture run writes a local
+`sentinel-rows.json` instead of calling the Logs Ingestion API. See
+[Sentinel](sentinel.md).
 
 ## Fleet
 

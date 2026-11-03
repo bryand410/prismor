@@ -2531,6 +2531,11 @@ def install_background_sinks(maxsize: int = 10000) -> "queue.Queue[Any]":
         heartbeat.maybe_flush = maybe_flush
     except Exception:
         pass
+    try:
+        from prismor.runtime.sentinel import start_background
+        start_background()
+    except Exception:
+        pass
     return pending
 
 

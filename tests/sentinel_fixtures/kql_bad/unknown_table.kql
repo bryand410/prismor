@@ -1,0 +1,2 @@
+FooBar_CL
+| where Name == "a"

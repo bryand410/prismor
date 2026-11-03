@@ -1,0 +1,31 @@
+{
+  "schema": "prismor.inventory.v1",
+  "record_id": "inv_cpsagent0000000001",
+  "entity_key": "cps:agent:1",
+  "group_id": "grp_cpsagent000001",
+  "kind": "lowcode_agent",
+  "surface": "lowcode",
+  "source": "lowcode.copilot_studio",
+  "product": "Copilot Studio",
+  "vendor": "Microsoft",
+  "name": "Benefits bot",
+  "version": "1",
+  "observed_at": "2026-11-02T00:00:00Z",
+  "location": {
+    "tenant_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    "environment_id": "env-1",
+    "hostname": "",
+    "host_id": ""
+  },
+  "governance": {"managed": false, "governed_by": "", "coverable": true, "mode": "none", "approved": false},
+  "risk": {
+    "score": 55,
+    "level": "high",
+    "signals": [
+      {"id": "NO_AUTH", "weight": 30},
+      {"id": "SHARED_TENANT_WIDE", "weight": 25}
+    ]
+  },
+  "attributes": {"authentication": "none"},
+  "run": {"run_id": "run-cps", "scanner_version": "1.71.7", "collector_version": "1"}
+}

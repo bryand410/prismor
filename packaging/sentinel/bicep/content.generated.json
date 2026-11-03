@@ -1,0 +1,207 @@
+{
+  "analytics": [
+    {
+      "_file": "R1-new-unauthenticated-cps-agent.yaml",
+      "id": "8f0c1c2a-1b2e-4c3d-9a10-a1b2c3d4e5f1",
+      "name": "Prismor new unauthenticated Copilot Studio agent",
+      "query": "let window = 1h;\nlet prior = PrismorAIInventory_CL\n  | where TimeGenerated between (ago(14d) .. ago(window))\n  | where Kind == \"lowcode_agent\"\n  | where set_has_element(RiskSignalIds, \"NO_AUTH\")\n  | distinct EntityKey;\nPrismorAIInventory_CL\n| where TimeGenerated > ago(window)\n| where Kind == \"lowcode_agent\" and InventorySource == \"lowcode.copilot_studio\"\n| where set_has_element(RiskSignalIds, \"NO_AUTH\")\n| join kind=leftanti prior on EntityKey\n| summarize arg_max(ObservedAt, *) by EntityKey\n| project ObservedAt, Name, PowerPlatformEnvironmentId, EntraTenantId, RiskScore, RiskSignalIds, GovernedBy, RecordId\n",
+      "queryFrequency": "PT1H",
+      "queryPeriod": "P14D",
+      "severity": "High",
+      "tactics": [
+        "InitialAccess",
+        "Exfiltration"
+      ],
+      "triggerOperator": "gt",
+      "triggerThreshold": 0,
+      "version": "1.0.0"
+    },
+    {
+      "_file": "R2-tenant-wide-share.yaml",
+      "id": "8f0c1c2a-1b2e-4c3d-9a10-a1b2c3d4e5f2",
+      "name": "Prismor agent newly shared tenant-wide",
+      "query": "let window = 1h;\nlet prior = PrismorAIInventory_CL\n  | where TimeGenerated between (ago(14d) .. ago(window))\n  | where Kind in (\"lowcode_agent\", \"cloud_agent\", \"agent\")\n  | where set_has_element(RiskSignalIds, \"SHARED_TENANT_WIDE\")\n  | distinct EntityKey;\nPrismorAIInventory_CL\n| where TimeGenerated > ago(window)\n| where Kind in (\"lowcode_agent\", \"cloud_agent\", \"agent\")\n| where set_has_element(RiskSignalIds, \"SHARED_TENANT_WIDE\")\n| join kind=leftanti prior on EntityKey\n| summarize arg_max(ObservedAt, *) by EntityKey\n| project ObservedAt, Name, Kind, EntraTenantId, RiskScore, RiskSignalIds, RecordId\n",
+      "queryFrequency": "PT1H",
+      "queryPeriod": "P14D",
+      "severity": "Medium",
+      "tactics": [
+        "Collection"
+      ],
+      "triggerOperator": "gt",
+      "triggerThreshold": 0,
+      "version": "1.0.0"
+    },
+    {
+      "_file": "R3-new-endpoint-mcp.yaml",
+      "id": "8f0c1c2a-1b2e-4c3d-9a10-a1b2c3d4e5f3",
+      "name": "Prismor new MCP server on an endpoint",
+      "query": "let window = 1h;\nlet prior = PrismorAIInventory_CL\n  | where TimeGenerated between (ago(14d) .. ago(window))\n  | where Kind == \"mcp_server\" and Surface == \"endpoint\"\n  | distinct HostId, EntityKey;\nPrismorAIInventory_CL\n| where TimeGenerated > ago(window)\n| where Kind == \"mcp_server\" and Surface == \"endpoint\"\n| join kind=leftanti prior on HostId, EntityKey\n| summarize arg_max(ObservedAt, *) by HostId, EntityKey\n| extend Unmanaged = not(Managed)\n| project ObservedAt, Hostname, HostId, UserHash, Name, Product, Path, Scope, Unmanaged, RiskScore, RiskSignalIds\n",
+      "queryFrequency": "PT1H",
+      "queryPeriod": "P14D",
+      "severity": "Medium",
+      "tactics": [
+        "Execution",
+        "Persistence"
+      ],
+      "triggerOperator": "gt",
+      "triggerThreshold": 0,
+      "version": "1.0.0"
+    },
+    {
+      "_file": "R4-secret-exposure.yaml",
+      "id": "8f0c1c2a-1b2e-4c3d-9a10-a1b2c3d4e5f4",
+      "name": "Prismor secret or API key exposure by an agent",
+      "query": "let secretRules = dynamic([\"mcp-hardcoded-secret\", \"copilot-studio-credential-in-arguments\", \"cloaked-secret-in-url\", \"cloaked-secret-in-mcp-args\"]);\nunion\n(PrismorAgentEvents_CL\n  | where TimeGenerated > ago(1h)\n  | where Category in (\"secret_exfiltration\", \"secret_access\") or RuleId in (secretRules)\n  | summarize Events=dcount(EventId), Blocked=dcountif(EventId, Action == \"block\"), Rules=make_set(RuleId, 20), FirstSeen=min(EventTime), LastSeen=max(EventTime) by Hostname, Subject, Agent\n  | extend Source = \"runtime\"),\n(PrismorAIInventory_CL\n  | where TimeGenerated > ago(1h)\n  | where set_has_element(RiskSignalIds, \"SECRET_IN_CONFIG\")\n  | summarize arg_max(ObservedAt, *) by RecordId\n  | project Hostname, Subject=UserHash, Agent=Product, Rules=pack_array(\"SECRET_IN_CONFIG\"), FirstSeen=ObservedAt, LastSeen=ObservedAt, Events=1, Blocked=0\n  | extend Source = \"inventory\")\n",
+      "queryFrequency": "PT15M",
+      "queryPeriod": "PT1H",
+      "severity": "High",
+      "suppressionDuration": "PT24H",
+      "suppressionEnabled": true,
+      "tactics": [
+        "CredentialAccess",
+        "Exfiltration"
+      ],
+      "triggerOperator": "gt",
+      "triggerThreshold": 0,
+      "version": "1.0.0"
+    },
+    {
+      "_file": "R5-policy-deny-spike.yaml",
+      "id": "8f0c1c2a-1b2e-4c3d-9a10-a1b2c3d4e5f5",
+      "name": "Prismor policy-deny spike",
+      "query": "let baseline = PrismorAgentEvents_CL\n  | where TimeGenerated between (ago(7d) .. ago(1h)) and Action == \"block\"\n  | summarize Blocks=dcount(EventId) by Hostname, bin(TimeGenerated, 1h)\n  | summarize AvgPerHour=avg(Blocks), StdPerHour=stdev(Blocks) by Hostname;\nPrismorAgentEvents_CL\n| where TimeGenerated > ago(1h) and Action == \"block\"\n| summarize Blocks=dcount(EventId), Rules=make_set(RuleId, 20), Categories=make_set(Category, 20) by Hostname, Subject, Agent\n| join kind=leftouter baseline on Hostname\n| extend Threshold = max_of(10.0, coalesce(AvgPerHour, 0.0) + 3.0 * coalesce(StdPerHour, 0.0))\n| where Blocks > Threshold\n| project Hostname, Subject, Agent, Blocks, Threshold, AvgPerHour, Rules, Categories\n",
+      "queryFrequency": "PT1H",
+      "queryPeriod": "P7D",
+      "severity": "Medium",
+      "tactics": [
+        "DefenseEvasion"
+      ],
+      "triggerOperator": "gt",
+      "triggerThreshold": 0,
+      "version": "1.0.0"
+    },
+    {
+      "_file": "R6-public-bind.yaml",
+      "id": "8f0c1c2a-1b2e-4c3d-9a10-a1b2c3d4e5f6",
+      "name": "Prismor AI service publicly bound",
+      "query": "let window = 1h;\nlet prior = PrismorAIInventory_CL\n  | where TimeGenerated between (ago(14d) .. ago(window))\n  | where Kind in (\"mcp_server\", \"model_runtime\", \"listener\")\n  | where set_has_element(RiskSignalIds, \"PUBLIC_BIND\")\n  | distinct HostId, EntityKey;\nPrismorAIInventory_CL\n| where TimeGenerated > ago(window)\n| where Kind in (\"mcp_server\", \"model_runtime\", \"listener\")\n| where set_has_element(RiskSignalIds, \"PUBLIC_BIND\")\n| join kind=leftanti prior on HostId, EntityKey\n| summarize arg_max(ObservedAt, *) by HostId, EntityKey\n| project ObservedAt, Hostname, HostId, Name, Kind, Path, RiskScore, RiskSignalIds, RecordId\n",
+      "queryFrequency": "PT1H",
+      "queryPeriod": "P14D",
+      "severity": "High",
+      "tactics": [
+        "InitialAccess"
+      ],
+      "triggerOperator": "gt",
+      "triggerThreshold": 0,
+      "version": "1.0.0"
+    },
+    {
+      "_file": "R7-critical-inventory.yaml",
+      "id": "8f0c1c2a-1b2e-4c3d-9a10-a1b2c3d4e5f7",
+      "name": "Prismor critical-risk AI inventory item",
+      "query": "let window = 1h;\nlet prior = PrismorAIInventory_CL\n  | where TimeGenerated between (ago(14d) .. ago(window))\n  | where RiskLevel =~ \"critical\" or set_has_element(RiskSignalIds, \"THREAT_INTEL\")\n  | distinct EntityKey;\nPrismorAIInventory_CL\n| where TimeGenerated > ago(window)\n| where RiskLevel =~ \"critical\" or set_has_element(RiskSignalIds, \"THREAT_INTEL\")\n| join kind=leftanti prior on EntityKey\n| summarize arg_max(ObservedAt, *) by EntityKey\n| project ObservedAt, Name, Kind, Surface, Hostname, RiskLevel, RiskScore, RiskSignalIds, RecordId\n",
+      "queryFrequency": "PT1H",
+      "queryPeriod": "P14D",
+      "severity": "High",
+      "tactics": [
+        "InitialAccess"
+      ],
+      "triggerOperator": "gt",
+      "triggerThreshold": 0,
+      "version": "1.0.0"
+    },
+    {
+      "_file": "R8-sensor-gap.yaml",
+      "id": "8f0c1c2a-1b2e-4c3d-9a10-a1b2c3d4e5f8",
+      "name": "Prismor sensor gap",
+      "query": "let seen7d = PrismorAgentEvents_CL\n  | where TimeGenerated > ago(7d)\n  | summarize LastSeen=max(TimeGenerated) by Hostname;\nseen7d\n| where LastSeen < ago(24h)\n| project Hostname, LastSeen, HoursSilent = datetime_diff('hour', now(), LastSeen)\n",
+      "queryFrequency": "PT6H",
+      "queryPeriod": "P7D",
+      "severity": "Low",
+      "tactics": [
+        "DefenseEvasion"
+      ],
+      "triggerOperator": "gt",
+      "triggerThreshold": 0,
+      "version": "1.0.0"
+    }
+  ],
+  "contentVersion": "1.0.0",
+  "hunting": [
+    {
+      "_file": "H1-inventory-census.yaml",
+      "id": "9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c01",
+      "name": "Inventory by kind, surface, and managed",
+      "query": "PrismorAIInventory_CL\n| where TimeGenerated > ago(7d)\n| summarize arg_max(ObservedAt, *) by RecordId\n| summarize Items=dcount(RecordId) by Kind, Surface, Managed\n",
+      "queryFrequency": "P1D",
+      "queryPeriod": "P7D",
+      "severity": "Informational",
+      "tactics": [
+        "Discovery"
+      ],
+      "triggerOperator": "gt",
+      "triggerThreshold": 0,
+      "version": "1.0.0"
+    },
+    {
+      "_file": "H2-unmanaged-per-user.yaml",
+      "id": "9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c02",
+      "name": "Unmanaged items per user",
+      "query": "PrismorAIInventory_CL\n| where TimeGenerated > ago(7d)\n| where Managed == false\n| summarize arg_max(ObservedAt, *) by RecordId\n| summarize Items=dcount(RecordId) by UserHash, Hostname\n| join kind=leftouter (IdentityInfo) on $left.UserHash == $right.AccountUpn\n",
+      "queryFrequency": "P1D",
+      "queryPeriod": "P7D",
+      "severity": "Informational",
+      "tactics": [
+        "Discovery"
+      ],
+      "triggerOperator": "gt",
+      "triggerThreshold": 0,
+      "version": "1.0.0"
+    },
+    {
+      "_file": "H3-session-events.yaml",
+      "id": "9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c03",
+      "name": "Agent events for a session",
+      "query": "PrismorAgentEvents_CL\n| where TimeGenerated > ago(1d)\n| where SessionId != \"\"\n| summarize arg_max(TimeGenerated, *) by EventId\n| sort by SessionSeq asc\n| project EventTime, SessionId, SessionSeq, RuleId, Action, Severity, FindingTitle, Hostname, Subject\n",
+      "queryFrequency": "P1D",
+      "queryPeriod": "P1D",
+      "severity": "Informational",
+      "tactics": [
+        "Discovery"
+      ],
+      "triggerOperator": "gt",
+      "triggerThreshold": 0,
+      "version": "1.0.0"
+    },
+    {
+      "_file": "H4-copilot-admin-activity.yaml",
+      "id": "9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c04",
+      "name": "Copilot Studio agents and admin activity",
+      "query": "// TODO(verify): HMLR may have PowerPlatformAdminActivity, CloudAppEvents, or neither.\n// This hunting query uses PowerPlatformAdminActivity. It is not a scheduled rule.\nPrismorAIInventory_CL\n| where TimeGenerated > ago(14d)\n| where Kind == \"lowcode_agent\" and InventorySource == \"lowcode.copilot_studio\"\n| summarize arg_max(ObservedAt, *) by EntityKey\n| join kind=leftouter (\n    PowerPlatformAdminActivity\n    | where TimeGenerated > ago(14d)\n    | project TimeGenerated, Name=OperationName\n  ) on Name\n| project ObservedAt, Name, EntraTenantId, PowerPlatformEnvironmentId, RiskScore\n",
+      "queryFrequency": "P1D",
+      "queryPeriod": "P14D",
+      "severity": "Informational",
+      "tactics": [
+        "Discovery"
+      ],
+      "triggerOperator": "gt",
+      "triggerThreshold": 0,
+      "version": "1.0.0"
+    }
+  ],
+  "parsers": {
+    "PrismorAIInventory.kql": "// Latest inventory state per record.\nPrismorAIInventory_CL\n| where TimeGenerated > ago(7d)\n| summarize arg_max(ObservedAt, *) by RecordId\n",
+    "PrismorAgentEvents.kql": "// At-least-once delivery becomes one row per EventId.\nPrismorAgentEvents_CL\n| where TimeGenerated > ago(1d)\n| summarize arg_max(TimeGenerated, *) by EventId\n"
+  },
+  "workbookQueries": {
+    "blocks.kql": "PrismorAgentEvents_CL\n| where TimeGenerated > ago(7d)\n| where Action == \"block\"\n| summarize Blocks=dcount(EventId) by bin(TimeGenerated, 1h)\n",
+    "census.kql": "PrismorAIInventory_CL\n| where TimeGenerated > ago(7d)\n| summarize Items=dcount(RecordId) by Kind, Surface\n",
+    "cps.kql": "PrismorAIInventory_CL\n| where TimeGenerated > ago(7d)\n| where Kind == \"lowcode_agent\" and InventorySource == \"lowcode.copilot_studio\"\n| where set_has_element(RiskSignalIds, \"NO_AUTH\") or set_has_element(RiskSignalIds, \"SHARED_TENANT_WIDE\") or set_has_element(RiskSignalIds, \"MAKER_CREDENTIALS\")\n| summarize arg_max(ObservedAt, *) by EntityKey\n| project ObservedAt, Name, EntraTenantId, PowerPlatformEnvironmentId, RiskScore, RiskSignalIds\n",
+    "findings.kql": "PrismorAgentEvents_CL\n| where TimeGenerated > ago(7d)\n| summarize Events=dcount(EventId) by Category, Action\n",
+    "health.kql": "PrismorAgentEvents_CL\n| where TimeGenerated > ago(7d)\n| where EventType == \"health\"\n| extend Late = iff(TimeGenerated != EventTime, 1, 0)\n| summarize Hosts=dcount(Hostname), LateRows=sum(Late) by bin(TimeGenerated, 1h)\n",
+    "managed.kql": "PrismorAIInventory_CL\n| where TimeGenerated > ago(7d)\n| summarize arg_max(ObservedAt, *) by RecordId\n| summarize Items=dcount(RecordId) by bin(ObservedAt, 1d), Managed\n",
+    "mcp.kql": "PrismorAIInventory_CL\n| where TimeGenerated > ago(7d)\n| where Kind == \"mcp_server\" and Surface == \"endpoint\"\n| summarize Servers=dcount(RecordId) by Hostname, HostId\n",
+    "rules.kql": "PrismorAgentEvents_CL\n| where TimeGenerated > ago(7d)\n| summarize Events=dcount(EventId) by RuleId, FindingTitle\n| top 20 by Events\n",
+    "signals.kql": "PrismorAIInventory_CL\n| where TimeGenerated > ago(7d)\n| mv-expand Signal=RiskSignalIds\n| summarize Hits=count() by tostring(Signal)\n"
+  }
+}
